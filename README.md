@@ -1,4 +1,4 @@
-# raycaster_game_engine
+# raycaster_game_engine_tutorial
 First person "3D" raycaster game engine. Based on youtube tutorials by 3DSage.
 
 This is my first experiment with building a 3D engine / renderer. The code is written in C, and rendered with function calls to OpenGL.
