@@ -9,6 +9,12 @@
 
 float px, py, pdx, pdy, pa; // player position
 
+typedef struct
+{
+	int w, a, s, d, z, c; // button states
+} ButtonKeys;
+ButtonKeys Keys;
+
 void drawPlayer()
 {
 	glColor3f(0,0,1); // draw dot
@@ -86,7 +92,7 @@ void drawRays2D()
 		float disV = 1000000,vx = px, vy = py;
 		float nTan = -tan(ra);
 		if (ra > P2 && ra < P3) { rx = (((int)px>>6)<<6)-0.0001; ry = (px - rx) * nTan + py; xo = -64; yo = -xo * nTan; } // looking left
-		if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6) + 64;   ry = (px - rx) * nTan + py; xo =  64; yo = -xo * nTan; } // looking right
+		if (ra < P2 || ra > P3) { rx = (((int)px>>6)<<6) + 64;   ry = (px- rx) * nTan + py; xo =  64; yo = -xo * nTan; } // looking right
 		if ( ra == P2 || ra == P3) { rx = px; ry = py; vx = rx; vy = ry; disV = dist(px, py, vx, vy, ra); dof = 8; } // looking straight up or down
 		while( dof < 8)
 		{
@@ -108,26 +114,95 @@ void drawRays2D()
 	}	
 }
 
+float frame1, frame2, fps;
+
 void display()
 {
- glClear(GL_COLOR_BUFFER_BIT);
+ // Player movement
+
+ // Make 2 forward-and-back collision-check probes
+ int xo = 0; if(pdx<0){ xo=-20;} /* player facing left */ else{ xo=20;} /* player facing right */
+ int yo = 0; if(pdy<0){ yo=-20;} /* player facing up */ else{ yo=20;} /* player facing down */     // note - y coordinates are reversed
+
+ // Make 4 left-and-right collision-check probes (aka x and y strafe offsets) for strafing - new code
+ int xLo = 0; // x offset while strafing left
+ int yLo = 0; // y offset while strafing left
+ int xRo = 0; // x offset while strafing right
+ int yRo = 0; // y offest while strafing right
+ if(xo<0 && yo<0) /* player facing left and up */    {xLo = -20; yLo = 20; xRo = 20; yRo = -20;}
+ if(xo<0 && yo>0) /* player facing left and down */  {xLo = 20; yLo = 20; xRo = -20; yRo = -20;}
+ if(xo>0 && yo<0) /* player facing right and up */   {xLo = -20;  yLo = -20;  xRo = 20; yRo = 20;}
+ if(xo>0 && yo>0) /* player facing right and down */ {xLo = 20; yLo = -20;  xRo = -20; yRo = 20;} 
+
+ // Player position and Intended destination in grid
+ int ipx = px/64.0; int ipx_add_xo = (px+xo)/64.0; int ipx_sub_xo = (px-xo)/64.0;
+ int ipy = py/64.0; int ipy_add_yo = (py+yo)/64.0; int ipy_sub_yo = (py-yo)/64.0;
+
+ // Intended positions while strafing - new code
+ int ipx_add_xLo = (px+xLo)/64.0;
+ int ipy_add_yLo = (py+yLo)/64.0;
+ int ipx_add_xRo = (px+xRo)/64.0;
+ int ipy_add_yRo = (py+yRo)/64.0;
+ 
+ // Move forward
+ if(Keys.w == 1)
+ {
+  if (map[ ipy*mapX /* current y tile */ + ipx_add_xo /* intended x tile */ ]==0){ px += pdx; } // if intended x tile is empty, move player horizontally forward
+  if (map[ ipy_add_yo*mapX /* intended y tile */ + ipx /* current x tile */ ]==0){ py += pdy; } // if intended y tile is empty, move player vertically forward
+  printf("ipx: %d\n", ipx);
+  printf("ipy: %d\n", ipy);
+  printf("Player X: %f ", px);
+  printf("Player Y: %f\n", py);
+ } 
+ 
+ // Move back
+ if(Keys.s == 1)
+ {
+  if (map[ ipy*mapX + ipx_sub_xo ] == 0){ px -= pdx; }
+  if (map[ ipy_sub_yo*mapX + ipx ] == 0){ py -= pdy; }
+ }
+
+ // Strafe left - new code
+ if(Keys.a == 1)
+ {
+  if(map[ ipy*mapX + ipx_add_xLo ] == 0) { px += cos(pa - PI/2) * 5; }
+  if(map[ ipy_add_yLo*mapX + ipx ] == 0) { py += sin(pa - PI/2) * 5; }
+ }
+
+ // Strafe right - new code
+ if(Keys.d == 1)
+ { 
+  if(map[ ipy*mapX + ipx_add_xRo ] == 0) { px -= cos(pa - PI/2) * 5; }
+  if(map[ ipy_add_yRo*mapX + ipx ] == 0) { py -= sin(pa - PI/2) * 5; }
+ }
+
+ // Rotate left
+ if(Keys.z == 1){ pa -= 0.1; if (pa <0) { pa+= 2*PI;} pdx = cos(pa) * 5; pdy = sin(pa) * 5; 
+ printf("xLo: %d\ ", xLo);
+ printf("xRo: %d ", xRo);
+ printf("yLo: %d ", yLo);
+ printf("yRo: %d ", yRo);
+ printf("xo: %d ", xo);
+ printf("yo: %d\n", yo);
+ }
+ 
+ // Rotate right
+ if(Keys.c == 1){ pa += 0.1; if (pa > 2*PI) { pa-= 2*PI;} pdx = cos(pa) * 5; pdy = sin(pa) * 5;
+ printf("xLo: %d\ ", xLo);
+ printf("xRo: %d ", xRo);
+ printf("yLo: %d ", yLo);
+ printf("yRo: %d\n", yRo);
+ printf("xo: %d ", xo);
+ printf("yo: %d\n", yo);
+ }
+ 
+ glutPostRedisplay();	
+
+ glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
  drawMap2D();
  drawPlayer();
  drawRays2D();
  glutSwapBuffers();
-}
-
-void buttons(unsigned char key, int x, int y) // Keyboard input
-{
-	if(key=='w'){ px += cos(pa) * 5; py += sin(pa) * 5;}
-	if(key=='a'){ px -= cos(pa + (PI/2)) * 5; py -= sin(pa + (PI/2)) * 5;} 
-	if(key=='s'){ px -= cos(pa) * 5; py -= sin(pa) * 5;}
-	if(key=='d'){ px += cos(pa + (PI/2)) * 5; py += sin(pa + (PI/2)) * 5;}
-
-	if(key=='z'){ pa -= 0.1; if (pa <0) { pa+= 2*PI;}}
-	if(key=='c'){ pa += 0.1; if (pa > 2*PI) { pa-= 2*PI;}}
-	
-	glutPostRedisplay();
 }
 
 void init()
@@ -142,6 +217,28 @@ void resize(int w, int h)
 	glutReshapeWindow(1024, 512);
 }
 
+void ButtonDown(unsigned char key, int x, int y)
+{
+	if (key == 'w') {Keys.w = 1;}
+	if (key == 'a') {Keys.a = 1;}
+	if (key == 's') {Keys.s = 1;}
+	if (key == 'd') {Keys.d = 1;}
+	if (key == 'z') {Keys.z = 1;}
+	if (key == 'c') {Keys.c = 1;}
+	glutPostRedisplay();
+}
+
+void ButtonUp(unsigned char key, int x, int y)
+{
+	if (key == 'w') {Keys.w = 0;}
+	if (key == 'a') {Keys.a = 0;}
+	if (key == 's') {Keys.s = 0;}
+	if (key == 'd') {Keys.d = 0;}
+	if (key == 'z') {Keys.z = 0;}
+	if (key == 'c') {Keys.c = 0;}
+	glutPostRedisplay();
+}
+
 int main(int argc, char** argv)
 { 
  glutInit(&argc, argv);
@@ -152,6 +249,7 @@ int main(int argc, char** argv)
  init();
  glutDisplayFunc(display);
  glutReshapeFunc(resize);
- glutKeyboardFunc(buttons);
+ glutKeyboardFunc(ButtonDown);
+ glutKeyboardUpFunc(ButtonUp);
  glutMainLoop();
 } 
