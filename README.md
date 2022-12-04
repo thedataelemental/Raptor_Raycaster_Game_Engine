@@ -1,4 +1,4 @@
-# raycaster_game_engine_tutorial
+# Raptor_Raycaster_Game_Engine
 First person "3D" raycaster game engine.
 
 This is my first experiment with building a 3D engine / renderer. The code is written in C, and rendered with function calls to OpenGL.
