@@ -10,7 +10,7 @@
 
 #define PI 3.14159
 #define PI_OVER_2 PI/2		
-#define THREE_PI_OVER_2 3*PI/2
+#define THREE_PI_OVER_2 3*PI/2		
 #define ONE_DEGREE 0.0174533 // One degree in radians
 
 // Player position, velocity, angle, etc
@@ -111,9 +111,9 @@ void drawRays3D()
 	int ray_map_array_tile;
 	int depth_of_field;
 
-	// Variables for finding 1/64th of player's x and y position
-	int player_x_over_64;
-	int player_y_over_64;
+	// Variables for rounding player's x and y to 1/64th precision
+	int rounded_player_x;
+	int rounded_player_y;
 
 	float ray_x_coordinate;
 	float ray_y_coordinate;
@@ -121,6 +121,11 @@ void drawRays3D()
 	float x_offset;
 	float y_offset;
 	float ray_length;
+
+	// Debug values
+	float x_intersect;
+	float y_intersect;
+	int saved_rounded_y;
 	
 	// Define angle of first ray, at left side of player's view
 	ray_angle = player_angle - ONE_DEGREE*30;
@@ -143,43 +148,66 @@ void drawRays3D()
 
 		depth_of_field = 0;
 
-		// Values for finding horizontal ray length
+		// Values for finding ray distance to horizontal grid wall line
 		float dist_to_horz_line = 1000000;
-		float horizontal_x = player_x;
-		float horizontal_y = player_y;
+		float x_distance_to_horizontal_wall_line = player_x;
+		float y_distance_to_horizontal_wall_line = player_y;
 
-		float aTan = -1 / tan(ray_angle);
+		//------------ WARNING - PLAYER ROTATION  / RAY ANGLE --------
+		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					//
+		// BECAUSE Y AXIS IS INVERTED.								//
+		// PI/2 IS DOWN. 3PI/2 IS UP.								//
+		//------------------------------------------------------------
 		
-		// Ray looking down
+		// Ray looking up - Accounting for inverse unit circle 
 		if(ray_angle > PI)
 		{
-			player_y_over_64 = (int) player_y;
+			rounded_player_y = (int) player_y;
 			
 			// Divide player y by 64 by bitshifting back and forth
-			player_y_over_64 = player_y_over_64 >> 6;
-			player_y_over_64 = player_y_over_64 << 6;
+			// This value lands on the grid line directly above the player
+			rounded_player_y = rounded_player_y >> 6;
+			rounded_player_y = rounded_player_y << 6;
 
-			ray_y_coordinate = player_y_over_64 - 0.0001;
-			ray_x_coordinate = (player_y - ray_y_coordinate) * aTan + player_x;
+			// Find point of collision with first horizontal grid line
+			ray_y_coordinate = rounded_player_y - 0.0001; // Y coordinate of grid line just above player
+			ray_x_coordinate = (ray_y_coordinate - player_y) * 1/tan(ray_angle) /* Horizontal distance between player and intersection point */ + player_x;
 			
-			y_offset = -64;
-			x_offset = -(y_offset) * aTan;
+			y_offset = -64;								// Vert distance to next line
+			x_offset = y_offset * 1/tan(ray_angle);		// Horz distance to next line
 		}
 
-		// Ray looking up
+		// Ray looking down - Accounting for inverse unit circle 
 		if(ray_angle < PI)
 		{
-			player_y_over_64 = (int) player_y;
+			rounded_player_y = (int) player_y;
 
-			// Divide player y by 64 by bitshifting back and forth
-			player_y_over_64 = player_y_over_64 >> 6;
-			player_y_over_64 = player_y_over_64 << 6;
+			// Divide player y by 64 by bitshifting back and forth=
+			// This value lands on the grid line directly above the player
+			rounded_player_y = rounded_player_y >> 6;
+			rounded_player_y = rounded_player_y << 6;
 
-			ray_y_coordinate = player_y_over_64 + 64;
-			ray_x_coordinate = (player_y - ray_y_coordinate) * aTan + player_x;
+			// Find point of collision with first horizontal grid line
+			ray_y_coordinate = rounded_player_y + 64; // Y coordinate of grid line just below player
+			ray_x_coordinate = (ray_y_coordinate - player_y) * 1/tan(ray_angle) /* Horizontal distance between player and intersection point */ + player_x;
 
-			y_offset = 64;
-			x_offset = -(y_offset) * aTan;
+		// Debug code - print values / save values to draw intersect point later
+//			if (ray == 30)
+//			{
+//				x_intersect = ray_x_coordinate;
+//				y_intersect = ray_y_coordinate;
+//				saved_rounded_y = rounded_player_y;
+//			
+//				printf("player x: %f\n", player_x);
+//				printf("player y: %f\n", player_y);
+//				printf("ray x: %f\n", ray_x_coordinate);
+//				printf("ray y: %f\n", ray_y_coordinate);
+//				printf("ray angle: %f\n", ray_angle);
+//				printf("rounded player y: %d\n)", saved_rounded_y);
+//			}
+			
+			y_offset = 64; 							// Vert distance to next line
+			x_offset = y_offset * 1/tan(ray_angle); // Horz distance to next line
 		}
 		
 		// Ray looking straight left or right
@@ -201,9 +229,9 @@ void drawRays3D()
 			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] == 1)
 			{
 				// Find ray length
-				horizontal_x = ray_x_coordinate;
-				horizontal_y = ray_y_coordinate;
-				dist_to_horz_line = find_ray_length(player_x, player_y, horizontal_x, horizontal_y, ray_angle);
+				x_distance_to_horizontal_wall_line = ray_x_coordinate;
+				y_distance_to_horizontal_wall_line = ray_y_coordinate;
+				dist_to_horz_line = find_ray_length(player_x, player_y, x_distance_to_horizontal_wall_line, y_distance_to_horizontal_wall_line, ray_angle);
 
 				depth_of_field = 8;
 			}
@@ -220,46 +248,47 @@ void drawRays3D()
 
 		// ------------------------------------------------------------------
 		// Repeat process - check for ray collision with vertical lines
+		// ------------------------------------------------------------------
 
 		depth_of_field = 0;
 
-		// Values for finding vertical ray length
+		// Values for finding ray distance to vertical grid wall line
 		float dist_to_vert_line = 1000000;
-		float vertical_x = player_x;
-		float vertical_y = player_y;
-
-		float nTan = -tan(ray_angle);
+		float x_distance_to_vertical_wall_line = player_x;
+		float y_distance_to_vertical_wall_line = player_y;
 		
 		// Ray looking left
 		if(ray_angle > PI_OVER_2 && ray_angle < THREE_PI_OVER_2)
 		{
-			player_x_over_64 = (int) player_x;
+			rounded_player_x = (int) player_x;
 			
-			// Divide player x by 64 by bitshifting back and forth
-			player_x_over_64 = player_x_over_64 >> 6;
-			player_x_over_64 = player_x_over_64 << 6;
+			// Divide player y by 64 by bitshifting back and forth
+			// This value lands on the grid line directly left of the player
+			rounded_player_x = rounded_player_x >> 6;
+			rounded_player_x = rounded_player_x << 6;
 
-			ray_x_coordinate = player_x_over_64 - 0.0001;
-			ray_y_coordinate = (player_x - ray_x_coordinate) * nTan + player_y;
+			ray_x_coordinate = rounded_player_x - 0.0001; // Grid line left of player
+			ray_y_coordinate = (ray_x_coordinate - player_x) * tan(ray_angle) /* Vertical distance between player and intersection point */ + player_y;
 			
-			x_offset = -64;
-			y_offset = -(x_offset) * nTan;
+			x_offset = -64;							// Horz distance to next line
+			y_offset = x_offset * tan(ray_angle);	// Vert distance to next line
 		}
 
 		// Ray looking right
 		if(ray_angle < PI_OVER_2 || ray_angle > THREE_PI_OVER_2)
 		{
-			player_x_over_64 = (int) player_x;
+			rounded_player_x = (int) player_x;
 
-			// Divide player x by 64 by bitshifting back and forth
-			player_x_over_64 = player_x_over_64 >> 6;
-			player_x_over_64 = player_x_over_64 << 6;
+			// Divide player y by 64 by bitshifting back and forth
+			// This value lands on the grid line directly left of the player
+			rounded_player_x = rounded_player_x >> 6;
+			rounded_player_x = rounded_player_x << 6;
 
-			ray_x_coordinate = player_x_over_64 + 64;
-			ray_y_coordinate = (player_x - ray_x_coordinate) * nTan + player_y;
+			ray_x_coordinate = rounded_player_x + 64; // Grid line right of player
+			ray_y_coordinate = (ray_x_coordinate - player_x) * tan(ray_angle) /* Vertical distance between player and intersection point */ + player_y;
 
-			x_offset = 64;
-			y_offset = -(x_offset) * nTan;
+			x_offset = 64; 							// Horz distance to next line
+			y_offset = x_offset * tan(ray_angle);	// Vert distance to next line
 		}
 		
 		// Ray looking straight up or down
@@ -281,9 +310,9 @@ void drawRays3D()
 			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] == 1)
 			{
 				// Find ray length
-				vertical_x = ray_x_coordinate;
-				vertical_y = ray_y_coordinate;
-				dist_to_vert_line = find_ray_length(player_x, player_y, vertical_x, vertical_y, ray_angle);
+				x_distance_to_vertical_wall_line = ray_x_coordinate;
+				y_distance_to_vertical_wall_line = ray_y_coordinate;
+				dist_to_vert_line = find_ray_length(player_x, player_y, x_distance_to_vertical_wall_line, y_distance_to_vertical_wall_line, ray_angle);
 
 				depth_of_field = 8;
 			}
@@ -299,17 +328,17 @@ void drawRays3D()
 		}
 
 		// Set final ray to whichever is shortest - vertical hit or horizontal hit
-		if(dist_to_vert_line < dist_to_horz_line)
+		if(dist_to_vert_line < dist_to_horz_line) // Ray hit vertical wall line first
 		{
-			ray_x_coordinate = vertical_x;
-			ray_y_coordinate = vertical_y;
+			ray_x_coordinate = x_distance_to_vertical_wall_line;
+			ray_y_coordinate = y_distance_to_vertical_wall_line;
 			ray_length = dist_to_vert_line;
 			glColor3f(0,0,0.9);
 		}
-		if(dist_to_horz_line < dist_to_vert_line)
+		if(dist_to_horz_line < dist_to_vert_line) // Ray hit horizontal wall line first
 		{
-			ray_x_coordinate = horizontal_x;
-			ray_y_coordinate = horizontal_y;
+			ray_x_coordinate = x_distance_to_horizontal_wall_line;
+			ray_y_coordinate = y_distance_to_horizontal_wall_line;
 			ray_length = dist_to_horz_line;
 			glColor3f(0,0,0.7);
 		}
@@ -320,10 +349,13 @@ void drawRays3D()
 		glVertex2i(player_x, player_y);
 		glVertex2i(ray_x_coordinate, ray_y_coordinate);
 		glEnd();
-		// ---------------------------------------------------------------
-		
+
+		// --------------------------------------------------------------
 		// Draw 3D walls
-		float correction_angle = player_angle - ray_angle; // Fix fisheye
+		// --------------------------------------------------------------
+		float correction_angle = player_angle - ray_angle; // Fisheye correction angle
+
+		// Angle limits for fisheye fix
 		if (correction_angle > 2*PI)
 		{
 			correction_angle -= 2*PI;
@@ -332,7 +364,8 @@ void drawRays3D()
 		{
 			correction_angle +- 2*PI;
 		}
-		ray_length = ray_length * cos(correction_angle);
+
+		ray_length = ray_length * cos(correction_angle); // Apply fisheye fix
 
 		int screen_height = 320;
 		float line_height = (map_scale * screen_height) / ray_length; // 320 = screen height
@@ -341,7 +374,8 @@ void drawRays3D()
 			line_height = screen_height;
 		}
 		float line_offset = 160 - line_height / 2; // Center wall lines on screen
-
+		
+		// Draw actual 3D wall line
 		glLineWidth(8);
 		glBegin(GL_LINES);
 		glVertex2i(ray*8+530, line_offset);
@@ -358,7 +392,16 @@ void drawRays3D()
 		{
 			ray_angle -= 2*PI;
 		}
+		
 	}
+
+	// Debug code - draw point of intersection with first horizontal grid line
+//	glColor3f(1,0,0);
+//	glPointSize(8);
+//	glBegin(GL_POINTS);
+//	glVertex2i(x_intersect, y_intersect);
+//	glEnd();
+	
 }
 
 // Primary display function given to OpenGL
@@ -384,6 +427,12 @@ void buttons(unsigned char key, int x, int y)
 	// Rotate player left
 	if(key == 'a') 
 	{
+		//---------------- WARNING - PLAYER ROTATION -----------------
+		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					//
+		// BECAUSE Y AXIS IS INVERTED.								//
+		// PI/2 IS DOWN. 3PI/2 IS UP.								//
+		//------------------------------------------------------------
+	
 		player_angle -= 0.1;
 		if (player_angle < 0)
 		{
