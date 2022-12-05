@@ -154,9 +154,8 @@ void drawRays3D()
 		float y_distance_to_horizontal_wall_line = player_y;
 
 		//------------ WARNING - PLAYER ROTATION  / RAY ANGLE --------
-		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					//
-		// BECAUSE Y AXIS IS INVERTED.								//
-		// PI/2 IS DOWN. 3PI/2 IS UP.								//
+		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					
+		// PI/2 IS DOWN. 3PI/2 IS UP.								
 		//------------------------------------------------------------
 		
 		// Ray looking up - Accounting for inverse unit circle 
@@ -428,9 +427,8 @@ void buttons(unsigned char key, int x, int y)
 	if(key == 'a') 
 	{
 		//---------------- WARNING - PLAYER ROTATION -----------------
-		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					//
-		// BECAUSE Y AXIS IS INVERTED.								//
-		// PI/2 IS DOWN. 3PI/2 IS UP.								//
+		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					
+		// PI/2 IS DOWN. 3PI/2 IS UP.								
 		//------------------------------------------------------------
 	
 		player_angle -= 0.1;
