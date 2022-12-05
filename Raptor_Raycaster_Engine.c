@@ -11,6 +11,7 @@
 #define PI 3.14159
 #define PI_OVER_2 PI/2		
 #define THREE_PI_OVER_2 3*PI/2
+#define ONE_DEGREE 0.0174533 // One degree in radians
 
 // Player position, velocity, angle, etc
 float player_x;
@@ -93,7 +94,15 @@ void drawMap2D()
 
 }
 
+// Use pythagorean theorem to find distance between player and ray's endpoint
+// a^2 + b^2 = c^2
+float find_ray_length(float player_x, float player_y, float ray_x, float ray_y, float angle)
+{
+	return (sqrt((ray_x-player_x)*(ray_x-player_x) + (ray_y-player_y)*(ray_y-player_y)));
+}
+
 // Calculate and draw rays
+// This process repeats four times - left, right, up, and down (top-down view)
 void drawRays3D()
 {
 	int ray;
@@ -111,16 +120,34 @@ void drawRays3D()
 	float ray_angle;
 	float x_offset;
 	float y_offset;
-
-	ray_angle = player_angle;
+	float ray_length;
+	
+	// Define angle of first ray, at left side of player's view
+	ray_angle = player_angle - ONE_DEGREE*30;
+	
+	// Define limits of ray angle
+	if(ray_angle < 0)
+	{
+		ray_angle += 2*PI;
+	}
+	if(ray_angle > 2*PI)
+	{
+		ray_angle -= 2*PI;
+	}
 	
 	// Find first collision between rays and horizontal or vertical grid lines
 	// aka find where each ray hits a wall
-	for(ray = 0; ray < 1; ray++)
+	for(ray = 0; ray < 60; ray++)
 	{
 		// Check for ray collision with horizontal lines
 
 		depth_of_field = 0;
+
+		// Values for finding horizontal ray length
+		float dist_to_horz_line = 1000000;
+		float horizontal_x = player_x;
+		float horizontal_y = player_y;
+
 		float aTan = -1 / tan(ray_angle);
 		
 		// Ray looking down
@@ -173,6 +200,11 @@ void drawRays3D()
 			// Ray hit horizontal wall
 			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] == 1)
 			{
+				// Find ray length
+				horizontal_x = ray_x_coordinate;
+				horizontal_y = ray_y_coordinate;
+				dist_to_horz_line = find_ray_length(player_x, player_y, horizontal_x, horizontal_y, ray_angle);
+
 				depth_of_field = 8;
 			}
 			
@@ -184,21 +216,18 @@ void drawRays3D()
 				ray_y_coordinate += y_offset;
 				depth_of_field += 1;
 			}
-		}
-
-		// Draw horizontal collision ray(s)
-		glColor3f(1,0,0);
-		glLineWidth(3);
-		glBegin(GL_LINES);
-		glVertex2i(player_x, player_y);
-		glVertex2i(ray_x_coordinate, ray_y_coordinate);
-		glEnd();
-	
+		}	
 
 		// ------------------------------------------------------------------
 		// Repeat process - check for ray collision with vertical lines
 
 		depth_of_field = 0;
+
+		// Values for finding vertical ray length
+		float dist_to_vert_line = 1000000;
+		float vertical_x = player_x;
+		float vertical_y = player_y;
+
 		float nTan = -tan(ray_angle);
 		
 		// Ray looking left
@@ -251,6 +280,11 @@ void drawRays3D()
 			// Ray hit vetical wall
 			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] == 1)
 			{
+				// Find ray length
+				vertical_x = ray_x_coordinate;
+				vertical_y = ray_y_coordinate;
+				dist_to_vert_line = find_ray_length(player_x, player_y, vertical_x, vertical_y, ray_angle);
+
 				depth_of_field = 8;
 			}
 			
@@ -264,14 +298,66 @@ void drawRays3D()
 			}
 		}
 
-		// Draw vertical collision ray(s)
-		glColor3f(0,1,0);
+		// Set final ray to whichever is shortest - vertical hit or horizontal hit
+		if(dist_to_vert_line < dist_to_horz_line)
+		{
+			ray_x_coordinate = vertical_x;
+			ray_y_coordinate = vertical_y;
+			ray_length = dist_to_vert_line;
+			glColor3f(0,0,0.9);
+		}
+		if(dist_to_horz_line < dist_to_vert_line)
+		{
+			ray_x_coordinate = horizontal_x;
+			ray_y_coordinate = horizontal_y;
+			ray_length = dist_to_horz_line;
+			glColor3f(0,0,0.7);
+		}
+
+		// Draw 2D rays
 		glLineWidth(1);
 		glBegin(GL_LINES);
 		glVertex2i(player_x, player_y);
 		glVertex2i(ray_x_coordinate, ray_y_coordinate);
 		glEnd();
 		// ---------------------------------------------------------------
+		
+		// Draw 3D walls
+		float correction_angle = player_angle - ray_angle; // Fix fisheye
+		if (correction_angle > 2*PI)
+		{
+			correction_angle -= 2*PI;
+		}
+		if (correction_angle < 0)
+		{
+			correction_angle +- 2*PI;
+		}
+		ray_length = ray_length * cos(correction_angle);
+
+		int screen_height = 320;
+		float line_height = (map_scale * screen_height) / ray_length; // 320 = screen height
+		if (line_height > screen_height)
+		{
+			line_height = screen_height;
+		}
+		float line_offset = 160 - line_height / 2; // Center wall lines on screen
+
+		glLineWidth(8);
+		glBegin(GL_LINES);
+		glVertex2i(ray*8+530, line_offset);
+		glVertex2i(ray*8+530, line_height+line_offset);
+		glEnd();
+
+		// Prep for next ray
+		ray_angle += ONE_DEGREE;
+		if(ray_angle < 0)
+		{
+			ray_angle += 2*PI;
+		}
+		if(ray_angle > 2*PI)
+		{
+			ray_angle -= 2*PI;
+		}
 	}
 }
 
@@ -341,7 +427,7 @@ void init()
 	gluOrtho2D(0,1024,512,0); // Make 1024 x 512 window w/ inverted Y coordinate
 	
 	// Initialize player position and velocity
-	player_x = 300; player_y = 300;
+	player_x = 364; player_y = 300;
 	player_delta_x = cos(player_angle) * 5;
 	player_delta_y = sin(player_angle) * 5;
 }
