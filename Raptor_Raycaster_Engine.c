@@ -248,7 +248,7 @@ void drawRays3D()
 			ray_map_y_tile = (int) (ray_y_coordinate) >> 6;
 			ray_map_array_tile = ray_map_y_tile * map_x_size + ray_map_x_tile;
 			
-			// Ray hit horizontal wall
+			// Ray hit vetical wall
 			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] == 1)
 			{
 				depth_of_field = 8;
