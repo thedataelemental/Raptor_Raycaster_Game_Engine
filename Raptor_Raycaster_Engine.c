@@ -479,15 +479,23 @@ void init()
 	player_delta_y = sin(player_angle) * 5;
 }
 
+// Stop user from resizing window - maintains graphics
+void resize()
+{
+	glutReshapeWindow(1024, 512);
+}
+
 void main(int argc, char* argv[])
 {
 	// Boilerplate OpenGL initializaion code
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); // Double buffered RGBA window
 	glutInitWindowSize(1024, 512); // Window dimensions
+	glutInitWindowPosition(200,400);
 	glutCreateWindow("Raptor Raycaster Engine"); // Window name
 	init();
 	glutDisplayFunc(display);
+	glutReshapeFunc(resize);
 	glutKeyboardFunc(buttons);
 	glutMainLoop();
 }
