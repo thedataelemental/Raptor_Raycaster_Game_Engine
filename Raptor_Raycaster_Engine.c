@@ -13,6 +13,13 @@
 #define THREE_PI_OVER_2 3*PI/2		
 #define ONE_DEGREE 0.0174533 // One degree in radians
 
+// Button states for player input / movement
+typedef struct
+{
+	int w, a, s, d;
+} ButtonKeys;
+ButtonKeys Keys;
+
 // Player position, velocity, angle, etc
 float player_x;
 float player_y;
@@ -406,25 +413,72 @@ void drawRays3D()
 // Primary display function given to OpenGL
 void display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear screen
-	drawMap2D();
-	drawPlayer(); // Draw 2D player dot
-	drawRays3D();
-	glutSwapBuffers(); // Render next frame
-}
+	//---------------------------------------------
+	// PLAYER MOVEMENT
+	//---------------------------------------------
 
-// Player movement / user input
-void buttons(unsigned char key, int x, int y)
-{
-	// Move player forward
-	if(key == 'w')
+	// Collision checks
+
+	// Probes to check for collision before letting player move
+	int horizontal_collision_probe = 0;
+	int vertical_collision_probe = 0;
+	
+	if(player_delta_x < 0) // If player is facing left,
 	{
-		player_x += player_delta_x;
-		player_y += player_delta_y;
+		horizontal_collision_probe = -20; // Check left of player.
+	}
+	else
+	{
+		horizontal_collision_probe = 20; // Else, check right of player.
+	}
+
+	if(player_delta_y < 0) // If player is facing up (note - y axis is inverted),
+	{
+		vertical_collision_probe = -20; // Check above player.
+	}
+	else
+	{
+		vertical_collision_probe = 20; // Else, check below player.
+	}
+
+	// Player's x and y map tiles
+	int player_map_x_tile = (int) player_x / 64.0;
+	int player_map_y_tile = (int) player_y / 64.0;
+
+	// Player's intended x and y map tiles (if walking forward)
+	int horizontal_probe_map_tile = (int) ((player_x + horizontal_collision_probe) / 64.0);
+	int vertical_probe_map_tile = (int) ((player_y + vertical_collision_probe) / 64.0);
+
+	// Player's intended x and y map tiles (if walking backward)
+	int reverse_horz_probe_map_tile = (int) ((player_x - horizontal_collision_probe) / 64.0);
+	int reverse_vert_probe_map_tile = (int) ((player_y - vertical_collision_probe) / 64.0);
+
+	// Locate player's intended map tiles, as located in actual map array
+	int player_intended_x_tile = 			map[((map_x_size * player_map_y_tile) + horizontal_probe_map_tile)]; 	// If I walk forward, will my x coordinate be in a wall?
+	int player_intended_y_tile = 			map[((map_x_size * vertical_probe_map_tile) + player_map_x_tile)]; 		// If I walk forward, will my y coordinate be in a wall?
+	int player_intended_reverse_x_tile = 	map[((map_x_size * player_map_y_tile) + reverse_horz_probe_map_tile)]; 	// If I walk backward, will my x coordinate be in a wall?
+	int player_intended_reverse_y_tile = 	map[((map_x_size * reverse_vert_probe_map_tile) + player_map_x_tile)]; 	// If I walk backward, will my y coordinate be in a wall?
+
+	printf("player x tile: %d\n",   player_map_x_tile);
+	printf("player y tile: %d\n\n", player_map_y_tile);
+	
+
+	// Move player forward
+	if(Keys.w == 1)
+	{
+		if (player_intended_x_tile == 0)
+		{
+			player_x += player_delta_x;
+		}
+
+		if (player_intended_y_tile == 0)
+		{
+			player_y += player_delta_y;
+		}
 	}
 
 	// Rotate player left
-	if(key == 'a') 
+	if(Keys.a == 1) 
 	{
 		//---------------- WARNING - PLAYER ROTATION -----------------
 		// UNIT CIRCLE IS INVERTED (GOES CLOCKWISE)					
@@ -445,14 +499,21 @@ void buttons(unsigned char key, int x, int y)
 	}
 
 	// Move player back
-	if(key == 's') 
+	if(Keys.s == 1) 
 	{
-		player_x -= player_delta_x;
-		player_y -= player_delta_y;
+		if (player_intended_reverse_x_tile == 0)
+		{
+			player_x -= player_delta_x;
+		}
+
+		if (player_intended_reverse_y_tile == 0)
+		{
+			player_y -= player_delta_y;
+		}
 	}	
 	
 	// Rotate player right
-	if(key == 'd')
+	if(Keys.d == 1)
 	{
 		player_angle += 0.1;
 		if (player_angle > (2 * PI))
@@ -466,6 +527,12 @@ void buttons(unsigned char key, int x, int y)
 	}
 	
 	glutPostRedisplay(); // Set flag for window to be redrawn
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear screen
+	drawMap2D();
+	drawPlayer(); // Draw 2D player dot
+	drawRays3D();
+	glutSwapBuffers(); // Render next frame
 }
 
 void init()
@@ -477,6 +544,54 @@ void init()
 	player_x = 364; player_y = 300;
 	player_delta_x = cos(player_angle) * 5;
 	player_delta_y = sin(player_angle) * 5;
+}
+
+// Detect keyboard butttons being pressed
+void ButtonDown(unsigned char key, int x, int y)
+{
+	if (key=='w')
+	{
+		Keys.w = 1;
+	}
+
+	if (key=='a')
+	{
+		Keys.a = 1;
+	}
+	
+	if (key=='s')
+	{
+		Keys.s = 1;
+	}
+
+	if (key=='d')
+	{
+		Keys.d = 1;
+	}
+}
+
+// Detect keyboard buttons being released
+void ButtonUp(unsigned char key, int x, int y)
+{
+	if (key=='w')
+	{
+		Keys.w = 0;
+	}
+
+	if (key=='a')
+	{
+		Keys.a = 0;
+	}
+	
+	if (key=='s')
+	{
+		Keys.s = 0;
+	}
+
+	if (key=='d')
+	{
+		Keys.d = 0;
+	}
 }
 
 // Stop user from resizing window - maintains graphics
@@ -496,7 +611,8 @@ void main(int argc, char* argv[])
 	init();
 	glutDisplayFunc(display);
 	glutReshapeFunc(resize);
-	glutKeyboardFunc(buttons);
+	glutKeyboardFunc(ButtonDown);
+	glutKeyboardUpFunc(ButtonUp);
 	glutMainLoop();
 }
 
