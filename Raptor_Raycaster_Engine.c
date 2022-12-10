@@ -202,12 +202,14 @@ void drawPlayer()
 int map_x_size = 8;
 int map_y_size = 8;
 int map_scale = 64;
-int map[] = 
+
+// Actual map tile layout
+int map_walls[] = 
 {
 	1,1,1,3,3,3,1,1,
-	1,0,0,0,0,0,0,1,
-	1,0,1,1,0,0,0,3,
-	1,0,1,0,0,0,0,3,
+	1,0,0,1,0,0,0,1,
+	1,0,0,4,0,0,0,3,
+	1,1,4,1,0,0,0,3,
 	3,0,0,0,1,0,0,3,
 	1,0,0,0,1,0,0,1,
 	1,0,0,0,0,0,0,1,
@@ -226,7 +228,7 @@ void drawMap2D()
 	{
 		for(x = 0; x < map_x_size; x++)
 		{
-			if(map[y * map_x_size + x] > 0) // If this tile is a wall,
+			if(map_walls[y * map_x_size + x] > 0) // If this tile is a wall,
 			{
 				glColor3f(1,1,1); // draw it as a white square.
 			}
@@ -388,9 +390,9 @@ void drawRays3D()
 			ray_map_array_tile = ray_map_y_tile * map_x_size + ray_map_x_tile;
 			
 			// Ray hit horizontal wall
-			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] > 0)
+			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map_walls[ray_map_array_tile] > 0)
 			{
-				horizontal_map_texture = map[ray_map_array_tile] - 1; // Subtract 1 to start at beginning of textures array
+				horizontal_map_texture = map_walls[ray_map_array_tile] - 1; // Subtract 1 to start at beginning of textures array
 
 				// Find ray length
 				x_distance_to_horizontal_wall_line = ray_x_coordinate;
@@ -471,9 +473,9 @@ void drawRays3D()
 			ray_map_array_tile = ray_map_y_tile * map_x_size + ray_map_x_tile;
 			
 			// Ray hit vetical wall
-			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map[ray_map_array_tile] > 0)
+			if(ray_map_array_tile > 0 && ray_map_array_tile < map_x_size * map_y_size && map_walls[ray_map_array_tile] > 0)
 			{
-				vertical_map_texture = map[ray_map_array_tile] - 1; // Subtract 1 to start at beginning of textures array
+				vertical_map_texture = map_walls[ray_map_array_tile] - 1; // Subtract 1 to start at beginning of textures array
 
 				// Find ray length
 				x_distance_to_vertical_wall_line = ray_x_coordinate;
@@ -523,7 +525,7 @@ void drawRays3D()
 		glEnd();
 
 		// --------------------------------------------------------------
-		// Draw 3D walls
+		// Draw 3D scene
 		// --------------------------------------------------------------
 		float correction_angle = player_angle - ray_angle; // Fisheye correction angle
 
@@ -551,13 +553,13 @@ void drawRays3D()
 			line_height = screen_height;
 		}
 
+		// Prepare to start drawing walls
 		float line_offset = 160 - line_height / 2; // Center wall lines on screen
-		
 		int current_pixel;
 		float texture_y = texture_y_offset * texture_y_step + map_texture * 32;
 		float texture_x;
 
-		// Do texture mapping
+		// Do wall texture mapping
 		if (shading == 1) // Rendering horizontal grid line
 		{
 			texture_x = (int) (ray_x_coordinate / 2.0) % 32;
@@ -582,8 +584,25 @@ void drawRays3D()
 		{
 			float pixel_color = all_textures[(int) (texture_y) * 32 + (int) (texture_x)]; // Get pixel color from texture array
 			pixel_color = pixel_color * shading;
+			
+			// Quick hack for simple color variation
+			if (map_texture == 0)
+			{
+				glColor3f(pixel_color*0.75, pixel_color/2.0, pixel_color/2.0);	
+			}
+			if (map_texture == 1)
+			{
+				glColor3f(pixel_color/2.0, pixel_color/2.0, pixel_color/2.0);	
+			}
+			if (map_texture == 2)
+			{
+				glColor3f(pixel_color/2.0, pixel_color/2.0, pixel_color/2.0);
+			}
+			if (map_texture == 3)
+			{
+				glColor3f(pixel_color*0.75, pixel_color*0.75, pixel_color/2.0);
+			}
 
-			glColor3f(pixel_color, pixel_color, pixel_color);
 			glLineWidth(8);
 			glBegin(GL_POINTS);
 			glVertex2i(ray*8+530, current_pixel+line_offset);
@@ -658,10 +677,10 @@ void display()
 	int reverse_vert_probe_map_tile = (int) ((player_y - vertical_collision_probe) / 64.0);
 
 	// Locate player's intended map tiles, as located in actual map array
-	int player_intended_x_tile = 			map[((map_x_size * player_map_y_tile) + horizontal_probe_map_tile)]; 	// If I walk forward, will my x coordinate be in a wall?
-	int player_intended_y_tile = 			map[((map_x_size * vertical_probe_map_tile) + player_map_x_tile)]; 		// If I walk forward, will my y coordinate be in a wall?
-	int player_intended_reverse_x_tile = 	map[((map_x_size * player_map_y_tile) + reverse_horz_probe_map_tile)]; 	// If I walk backward, will my x coordinate be in a wall?
-	int player_intended_reverse_y_tile = 	map[((map_x_size * reverse_vert_probe_map_tile) + player_map_x_tile)]; 	// If I walk backward, will my y coordinate be in a wall?
+	int player_intended_x_tile = 			map_walls[((map_x_size * player_map_y_tile) + horizontal_probe_map_tile)]; 		// If I walk forward, will my x coordinate be in a wall?
+	int player_intended_y_tile = 			map_walls[((map_x_size * vertical_probe_map_tile) + player_map_x_tile)]; 		// If I walk forward, will my y coordinate be in a wall?
+	int player_intended_reverse_x_tile = 	map_walls[((map_x_size * player_map_y_tile) + reverse_horz_probe_map_tile)]; 	// If I walk backward, will my x coordinate be in a wall?
+	int player_intended_reverse_y_tile = 	map_walls[((map_x_size * reverse_vert_probe_map_tile) + player_map_x_tile)]; 	// If I walk backward, will my y coordinate be in a wall?
 
 	printf("player x tile: %d\n",   player_map_x_tile);
 	printf("player y tile: %d\n\n", player_map_y_tile);
@@ -771,6 +790,47 @@ void ButtonDown(unsigned char key, int x, int y)
 	if (key=='d')
 	{
 		Keys.d = 1;
+	}
+
+	if (key=='e')
+	{
+		// Open door
+
+		// Probes to check if player is facing a door
+		// (Same system as player wall collision)
+		int x_probe = 0;
+		int y_probe = 0;
+
+		// Position probes depending on player's facing
+		if(player_delta_x < 0)
+		{
+			x_probe = -25;
+		}
+		else
+		{
+			x_probe = 25;
+		}
+
+		if(player_delta_y < 0)
+		{
+			y_probe = -25;
+		}
+		else
+		{
+			y_probe = 25;
+		}
+
+		// X and Y map tiles of player and probes
+		int player_x_tile = player_x / 64.0;
+		int player_y_tile = player_y / 64.0;
+
+		int x_probe_tile = (player_x + x_probe) / 64.0;
+		int y_probe_tile = (player_y + y_probe) / 64.0;
+
+		if(map_walls[y_probe_tile * map_x_size + x_probe_tile] == 4)
+		{
+			map_walls[y_probe_tile * map_x_size + x_probe_tile] = 0;
+		}
 	}
 }
 
