@@ -216,6 +216,30 @@ int map_walls[] =
 	1,1,3,3,1,1,1,1,
 };
 
+int map_floors[] = 
+{
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	1,1,1,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,
+	1,1,1,1,1,1,1,1,
+	0,0,0,0,0,0,0,0,
+};
+
+int map_ceilings[] = 
+{
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,
+};
+
 // Draw 2D overhead map
 void drawMap2D()
 {
@@ -603,12 +627,50 @@ void drawRays3D()
 				glColor3f(pixel_color*0.75, pixel_color*0.75, pixel_color/2.0);
 			}
 
-			glLineWidth(8);
+			glPointSize(8);
 			glBegin(GL_POINTS);
 			glVertex2i(ray*8+530, current_pixel+line_offset);
 			glEnd();
 
 			texture_y += texture_y_step;
+		}
+
+		//--------------------------------
+		// Draw floors and ceilings
+		//--------------------------------
+		for(current_pixel = line_offset + line_height; current_pixel < screen_height; current_pixel++) // Draw from bottom of wall to screen's edge
+		{
+			// Draw floor
+			float y_distance = current_pixel - (screen_height / 2.0);
+			float floor_angle = player_angle - ray_angle;
+
+			// Limits for angle
+			if(floor_angle > 2*PI) {floor_angle -= 2*PI;}
+			if(floor_angle < 0) {floor_angle += 2*PI;}
+
+			// Floor texture mapping
+			texture_x = (player_x / 2) + cos(ray_angle) * 158 * 32 / y_distance / cos(floor_angle);
+			texture_y = (player_y / 2) + sin(ray_angle) * 158 * 32 / y_distance / cos(floor_angle);
+			int map_position = map_floors[(int) (texture_y / 32.0) * map_x_size + (int) (texture_x / 32.0)]*32*32;
+			float pixel = all_textures[((int) (texture_y) & 31) * 32 +  ((int) (texture_x) & 31) + map_position] * 0.7;
+			
+			// Actually drawing floor
+			glColor3f(pixel, pixel, pixel);
+			glPointSize(8);
+			glBegin(GL_POINTS);
+			glVertex2i(ray*8+530, current_pixel);
+			glEnd();
+
+			// Draw ceiling
+			map_position = map_ceilings[(int) (texture_y / 32.0) * map_x_size + (int) (texture_x / 32.0)]*32*32;
+			pixel = all_textures[((int) (texture_y) & 31) * 32 +  ((int) (texture_x) & 31) + map_position] * 0.7;
+			
+			// Actually drawing ceiling
+			glColor3f(pixel, pixel, pixel);
+			glPointSize(8);
+			glBegin(GL_POINTS);
+			glVertex2i(ray*8+530, screen_height - current_pixel);
+			glEnd();
 		}
 
 		// Prep for next ray
