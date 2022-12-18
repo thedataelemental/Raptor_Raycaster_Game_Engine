@@ -166,48 +166,48 @@ int map_ceilings[] =
 };
 
 // Draw 2D overhead map
-void drawMap2D()
-{
-	int x;
-	int y;
-	int x_offset;
-	int y_offset;
-
-	for(y = 0; y < map_y_size; y++)
-	{
-		for(x = 0; x < map_x_size; x++)
-		{
-			if(map_walls[y * map_x_size + x] == 7) // If a tile is a door,
-			{
-				glColor3f(1,0,0); // draw it as a red square.
-			}
-
-			else if(map_walls[y * map_x_size + x] > 0) // If this tile is a wall,
-			{
-				glColor3f(1,1,1); // draw it as a white square.
-			}
-
-			else
-			{
-				glColor3f(0,0,0); // Else, draw empty space as black.
-			}
+//void drawMap2D()
+//{
+//	int x;
+//	int y;
+//	int x_offset;
+//	int y_offset;
+//
+//	for(y = 0; y < map_y_size; y++)
+//	{
+//		for(x = 0; x < map_x_size; x++)
+//		{
+//			if(map_walls[y * map_x_size + x] == 7) // If a tile is a door,
+//			{
+//				glColor3f(1,0,0); // draw it as a red square.
+//			}
+//
+//			else if(map_walls[y * map_x_size + x] > 0) // If this tile is a wall,
+//			{
+//				glColor3f(1,1,1); // draw it as a white square.
+//			}
+//
+//			else
+//			{
+//				glColor3f(0,0,0); // Else, draw empty space as black.
+//			}
 			
-			x_offset = x * 16;
-			y_offset = y * 16;
+//			x_offset = x * 16;
+//			y_offset = y * 16;
 					
-			glBegin(GL_QUADS);
+//			glBegin(GL_QUADS);
 
 			// Define four vertices of square to be drawn.
 			// Plus or minus 1 to each coordinate to outline map tiles.
-			glVertex2i(x_offset + 1, y_offset + 1);
-			glVertex2i(x_offset + 1, y_offset + 16 - 1);
-			glVertex2i(x_offset + 16 - 1, y_offset + 16 - 1);
-			glVertex2i(x_offset + 16 - 1, y_offset + 1);
-			glEnd();
-		}
-	}
+//			glVertex2i(x_offset + 1, y_offset + 1);
+//			glVertex2i(x_offset + 1, y_offset + 16 - 1);
+//			glVertex2i(x_offset + 16 - 1, y_offset + 16 - 1);
+//			glVertex2i(x_offset + 16 - 1, y_offset + 1);
+//			glEnd();
+//		}
+//	}
 
-}
+//}
 
 // Use pythagorean theorem to find distance between player and ray's endpoint
 // a^2 + b^2 = c^2
@@ -257,7 +257,7 @@ void drawRays3D()
 	
 	// Find first collision between rays and horizontal or vertical grid lines
 	// aka find where each ray hits a wall
-	for(ray = 0; ray < 60; ray++)
+	for(ray = 0; ray < 120; ray++)
 	{
 		// What texture did the rays hit?
 		int vertical_map_texture = 0;
@@ -471,12 +471,12 @@ void drawRays3D()
 			glColor3f(0,0,0.7);
 		}
 
-		// Draw 2D rays
-		glLineWidth(1);
-		glBegin(GL_LINES);
-		glVertex2i(player_x/4, player_y/4); // divide by 4 because maps are now 4 times larger as of 12/14/22
-		glVertex2i(ray_x_coordinate/4, ray_y_coordinate/4);
-		glEnd();
+		// Draw 2D rays on top-down map (map itself is drawn elsewhere)
+//		glLineWidth(1);
+//		glBegin(GL_LINES);
+//		glVertex2i(player_x/4, player_y/4); // divide by 4 because maps are now 4 times larger as of 12/14/22
+//		glVertex2i(ray_x_coordinate/4, ray_y_coordinate/4);
+//		glEnd();
 
 		// --------------------------------------------------------------
 		// Draw 3D scene
@@ -495,7 +495,7 @@ void drawRays3D()
 
 		ray_length = ray_length * cos(correction_angle); // Apply fisheye fix
 
-		int screen_height = 320;
+		int screen_height = 640;
 		float line_height = (map_scale * screen_height) / ray_length;
 		float texture_y_step = 32.0 / (float) line_height;
 		float texture_y_offset = 0;
@@ -508,7 +508,7 @@ void drawRays3D()
 		}
 
 		// Prepare to start drawing walls
-		float line_offset = 160 - line_height / 2; // Center wall lines on screen
+		float line_offset = (screen_height / 2) - (line_height / 2); // Center wall lines on screen
 		int current_pixel;
 		float texture_y = texture_y_offset * texture_y_step; // + map_texture * 32;
 		float texture_x;
@@ -547,7 +547,7 @@ void drawRays3D()
 			glPointSize(8);
 			glColor3ub(red, green, blue);
 			glBegin(GL_POINTS);
-			glVertex2i(ray * 8 + 530, current_pixel + line_offset);
+			glVertex2i(ray * 8, current_pixel + line_offset);
 			glEnd();
 
 			texture_y += texture_y_step;
@@ -555,7 +555,7 @@ void drawRays3D()
 
 		//--------------------------------
 		// Draw floors and ceilings
-		//--------------------------------
+		//--------------------------------	
 		for(current_pixel = line_offset + line_height; current_pixel < screen_height; current_pixel++) // Draw from bottom of wall to screen's edge
 		{
 			// Draw floor
@@ -571,8 +571,8 @@ void drawRays3D()
 			// Start by dividing player x and y by 2, because the map scale is   64x64, but the textures are 32x32.
 			// Use cosine (adjacent / hypotenuse) to find horizontal distance, and sine (opposite / hypotenuse) to find vertical distance.
 			// The rest of the tx and ty formulas are still weird to me, but I know it has to do with projecting a ray onto the floor with trigonometry.
-			texture_x = (player_x / 2)  + cos(ray_angle) * 158 * 32 / y_distance / cos(floor_angle);
-			texture_y = (player_y / 2) + sin(ray_angle) * 158 * 32 / y_distance / cos(floor_angle);
+			texture_x = (player_x / 2)  + cos(ray_angle) * 158*2 * 32 / y_distance / cos(floor_angle);
+			texture_y = (player_y / 2) + sin(ray_angle) * 158*2 * 32 / y_distance / cos(floor_angle);
 			int map_position = map_floors[(int) (texture_y / 32.0) * map_x_size + (int) (texture_x / 32.0)]*32*32; // Which tile of the floor (which entry of map_floors array) are we currently rendering?
 //			float pixel_color = all_textures[((int) (texture_y) & 31) * 32 +  ((int) (texture_x) & 31) + map_position] * 0.7; // What is the color of the pixel we are currently rendering?
 
@@ -586,7 +586,7 @@ void drawRays3D()
 			glPointSize(8);
 			glColor3ub(red, green, blue);
 			glBegin(GL_POINTS);
-			glVertex2i(ray*8+530, current_pixel); // X-coord is multiplied by 8 because that is the point size. Then add 530 to render on right size of screen (left of the top down view)
+			glVertex2i(ray*8, current_pixel); // X-coord is multiplied by 8 because that is the point size.
 			glEnd();
 
 			// Draw ceiling - same as floor, only a different map array
@@ -597,7 +597,7 @@ void drawRays3D()
 //			glColor3f(red, green, blue);
 //			glPointSize(8);
 //			glBegin(GL_POINTS);
-//			glVertex2i(ray*8+530, screen_height - current_pixel); // Difference from floor rendering is here: draw from top of wall to top of screen. This chunk of code is otherwise the same.
+//			glVertex2i(ray*8, screen_height - current_pixel); // Difference from floor rendering is here: draw from top of wall to top of screen. This chunk of code is otherwise the same.
 //			glEnd();
 
 			texture_pixel = (((int) (texture_y) & 31) * 32 +  ((int) (texture_x) & 31)) * 3 + map_position * 3; // Find specific pixel of texture
@@ -605,16 +605,16 @@ void drawRays3D()
 			green = all_textures[texture_pixel+1] * 0.7;
 			blue = all_textures[texture_pixel+2] * 0.7;
 			
-			// Actually drawing floor
+			// Actually drawing ceiling
 			glPointSize(8);
 			glColor3ub(red, green, blue);
 			glBegin(GL_POINTS);
-			glVertex2i(ray*8+530, screen_height - current_pixel); // X-coord is multiplied by 8 because that is the point size. Then add 530 to render on right size of screen (left of the top down view)
+			glVertex2i(ray*8, screen_height - current_pixel); // X-coord is multiplied by 8 because that is the point size.
 			glEnd();
 		}
 
 		// Prep for next ray
-		ray_angle += ONE_DEGREE;
+		ray_angle += ONE_DEGREE / 2;
 		if(ray_angle < 0)
 		{
 			ray_angle += 2*PI;
@@ -635,9 +635,16 @@ void drawRays3D()
 	
 }
 
+float frame_1, frame_2, fps; // Values for FPS control (frames per second)
+
 // Primary display function given to OpenGL
 void display()
 {
+	// Frames-per-second control
+	frame_2 = glutGet(GLUT_ELAPSED_TIME);
+	fps = (frame_2 - frame_1);
+	frame_1 = glutGet(GLUT_ELAPSED_TIME);
+
 	//---------------------------------------------
 	// PLAYER MOVEMENT
 	//---------------------------------------------
@@ -693,12 +700,12 @@ void display()
 	{
 		if (player_intended_x_tile == 0)
 		{
-			player_x += player_delta_x*0.75; // Multiply by 0.75 to achieve slower speed
+			player_x += player_delta_x * 0.05 * fps; // Multiply by 0.75 to achieve slower speed
 		}
 
 		if (player_intended_y_tile == 0)
 		{
-			player_y += player_delta_y*0.75;
+			player_y += player_delta_y * 0.05 * fps;
 		}
 	}
 
@@ -710,10 +717,10 @@ void display()
 		// PI/2 IS DOWN. 3PI/2 IS UP.								
 		//------------------------------------------------------------
 	
-		player_angle -= 0.075;
+		player_angle -= 0.003 * fps;
 		if (player_angle < 0)
 		{
-			player_angle += 2 * PI; // Reset player angle after full left rotation
+			player_angle += 2*PI; // Reset player angle after full left rotation
 		}
 		
 		// Update player velocity after left rotation
@@ -728,19 +735,19 @@ void display()
 	{
 		if (player_intended_reverse_x_tile == 0)
 		{
-			player_x -= player_delta_x/2;
+			player_x -= player_delta_x * 0.05 * fps;
 		}
 
 		if (player_intended_reverse_y_tile == 0)
 		{
-			player_y -= player_delta_y/2;
+			player_y -= player_delta_y * 0.05 * fps;
 		}
 	}	
 	
 	// Rotate player right
 	if(Keys.d == 1)
 	{
-		player_angle += 0.075;
+		player_angle += 0.003 * fps;
 		if (player_angle > (2 * PI))
 		{
 			player_angle -= 2*PI; // Reset player angle after full right rotation
@@ -754,8 +761,8 @@ void display()
 	glutPostRedisplay(); // Set flag for window to be redrawn
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear screen
-	drawMap2D();
-	drawPlayer(); // Draw 2D player dot
+//	drawMap2D();  // Draw top-down map
+//	drawPlayer(); // Draw 2D player dot
 	drawRays3D();
 
 	glutSwapBuffers(); // Render next frame
@@ -764,7 +771,7 @@ void display()
 void init()
 {
 	glClearColor(0.3,0.3,0.3,0); // Set dark gray background
-	gluOrtho2D(0,1024,512,0); // Make 1024 x 512 window w/ inverted Y coordinate
+	gluOrtho2D(0,960,640,0); // Make 1024 x 512 window w/ inverted Y coordinate
 	
 	// Initialize player position and velocity
 	player_x = 128; player_y = 128;
@@ -865,7 +872,7 @@ void ButtonUp(unsigned char key, int x, int y)
 // Stop user from resizing window - maintains graphics
 void resize()
 {
-	glutReshapeWindow(1024, 512);
+	glutReshapeWindow(960, 640);
 }
 
 void main(int argc, char* argv[])
@@ -873,8 +880,8 @@ void main(int argc, char* argv[])
 	// Boilerplate OpenGL initializaion code
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); // Double buffered RGBA window
-	glutInitWindowSize(1024, 512); // Window dimensions
-	glutInitWindowPosition(200,400);
+	glutInitWindowSize(960, 640); // Window dimensions
+	glutInitWindowPosition(glutGet(GLUT_SCREEN_WIDTH)/2 - (960/2), glutGet(GLUT_SCREEN_HEIGHT)/2 - (640/2)); // Launch game window in center of screen
 	glutCreateWindow("Raptor Raycaster Engine"); // Window name
 	init();
 	glutDisplayFunc(display);
