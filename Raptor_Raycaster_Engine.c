@@ -691,8 +691,9 @@ void display()
 	int player_intended_reverse_x_tile = 	map_walls[((map_x_size * player_map_y_tile) + reverse_horz_probe_map_tile)]; 	// If I walk backward, will my x coordinate be in a wall?
 	int player_intended_reverse_y_tile = 	map_walls[((map_x_size * reverse_vert_probe_map_tile) + player_map_x_tile)]; 	// If I walk backward, will my y coordinate be in a wall?
 
-	printf("player x tile: %d\n",   player_map_x_tile);
-	printf("player y tile: %d\n\n", player_map_y_tile);
+//  Debug code - displays player's location on map grid
+//	printf("player x tile: %d\n",   player_map_x_tile);
+//	printf("player y tile: %d\n\n", player_map_y_tile);
 	
 
 	// Move player forward
@@ -777,6 +778,8 @@ void init()
 	player_x = 128; player_y = 128;
 	player_delta_x = cos(player_angle) * 5;
 	player_delta_y = sin(player_angle) * 5;
+	glutSetCursor(GLUT_CURSOR_NONE);
+//	glutFullScreen();
 }
 
 // Detect keyboard butttons being pressed
@@ -875,11 +878,27 @@ void resize()
 	glutReshapeWindow(960, 640);
 }
 
+// Look around with mouse
+void look(int x, int y, int first_mouse_movement)
+{
+	player_angle += ( x - 480.0)/500;
+	player_delta_x = cos(player_angle) * 5;
+	player_delta_y = sin(player_angle) * 5;
+
+	// Keep mouse inside game window
+	if (x != (GLUT_SCREEN_WIDTH)/2 || y != glutGet(GLUT_SCREEN_HEIGHT)/2)
+	{
+		glutWarpPointer(480, 480); // move mouse back to center of window
+	}
+
+//	printf("%d, %d \n", x, y);
+}
+
 void main(int argc, char* argv[])
 {
 	// Boilerplate OpenGL initializaion code
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA); // Double buffered RGBA window
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA ); // Double buffered RGBA window
 	glutInitWindowSize(960, 640); // Window dimensions
 	glutInitWindowPosition(glutGet(GLUT_SCREEN_WIDTH)/2 - (960/2), glutGet(GLUT_SCREEN_HEIGHT)/2 - (640/2)); // Launch game window in center of screen
 	glutCreateWindow("Raptor Raycaster Engine"); // Window name
@@ -888,6 +907,8 @@ void main(int argc, char* argv[])
 	glutReshapeFunc(resize);
 	glutKeyboardFunc(ButtonDown);
 	glutKeyboardUpFunc(ButtonUp);
+	glutPassiveMotionFunc(look); // Moving mouse with no button pressed
+	glutMotionFunc(look); 		 // Moving mouse while holding a mouse button
 	glutMainLoop();
 }
 
